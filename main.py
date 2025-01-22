@@ -4,15 +4,15 @@ from langchain_community.vectorstores import Chroma
 from split import split_and_save
 # from langchain.schema import SystemMessage,HumanMessage,AIMessage
 
-os.environ["COHERE_API_KEY"] = "FNBaelq93u2x1BGapT26crxWfakNYbtf10176xCO"
+os.environ["COHERE_API_KEY"] = "COHERE_API_KEY" # 填入cohere api key
 
 chat = ChatCohere(
     model = "command-r-plus"
 )
 
-db = split_and_save("./fzu-wiki-main/pages/school/intro.mdx")
+db = split_and_save("file") #填入要保存的文件地址
 
-query = "福州大学校训"
+query = "询问"#填入询问内容
 
 sknowledge = db.similarity_search(query, k = 2)
 

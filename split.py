@@ -3,7 +3,6 @@ from langchain_cohere import CohereEmbeddings
 from langchain_community.vectorstores import Chroma
 import os
 
-os.environ["COHERE_API_KEY"] = "FNBaelq93u2x1BGapT26crxWfakNYbtf10176xCO"
 def split_and_save(file:str, db:Chroma = None, model:str = "embed-multilingual-light-v3.0") -> Chroma:
     cohere_embeddings = CohereEmbeddings(model = model)
     splitter = MarkdownTextSplitter(chunk_size = 500, chunk_overlap = 50)
@@ -16,7 +15,7 @@ def split_and_save(file:str, db:Chroma = None, model:str = "embed-multilingual-l
         db.add_texts(texts = chunks, embedding = cohere_embeddings, collection_name = "cohere_embed")
     return db
 
-if __name__ == "__main__":
+if __name__ == "__main__": # for Test
 
     query = "相关支持"
 
