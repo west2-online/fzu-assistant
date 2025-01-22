@@ -14,7 +14,7 @@ db = split_and_save("file") #填入要保存的文件地址
 
 query = "询问"#填入询问内容
 
-sknowledge = db.similarity_search(query, k = 2)
+sknowledge = db.similarity_search(query, k = 3)
 
 knowledge = "\n".join([kno.page_content for kno in sknowledge])
 
