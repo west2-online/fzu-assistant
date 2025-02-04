@@ -7,9 +7,11 @@ class Config:
         with open(file_path, 'r') as f:
             self._data = json.load(f)
 
-        os.environ["NEO4J_URI"] = self.neo4j.uri
+        os.environ["NEO4J_URI"] = self.neo4j.url
         os.environ["NEO4J_USERNAME"] = self.neo4j.username
         os.environ["NEO4J_PASSWORD"] = self.neo4j.password
+        os.environ["MISTRAL_API_KEY"] = self.MISTRAL_API_KEY
+        os.environ["ZHIPUAI_API_KEY"] = self.ZHIPUAI_API_KEY
 
     def __str__(self):
         return str(self._data)
@@ -37,4 +39,5 @@ conf = Config("./config.json")
 if __name__ == "__main__":
     print(conf["chroma"]["save_file"])
     print(conf.chroma.save_file)
+    print(os.environ["MISTRAL_API_KEY"])
 
