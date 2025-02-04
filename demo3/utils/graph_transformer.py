@@ -70,19 +70,20 @@ class GraphTransformer:
         return GraphDocument(nodes=nodes, relationships=relationships, source=document)
 
     def create_prompt(self) -> ChatPromptTemplate:
-        system_msg = """我需要你根据文本提取出实体以及实体之间的关系。
-        ### 输出要求
+        system_msg = """# 我需要你根据文本提取出实体以及实体之间的关系。
+        ## 输出要求
         - 实体：明确指出文本中出现的所有具有特定意义的名词或名词短语，如人名、地名、组织名等。相似的实体请归纳为一种。
         - 关系：准确描述实体之间的联系，关系词要能清晰表达这种联系，例如“拥有”“属于”“位于”等。相似的关系请选择最常见的那一种。
         - 输出格式：
           - "实体：{entity}({entity_type})"
           - "关系：{start_entity}({start_entity_type})-{relation}-{end_entity}({end_entity_type})"
+        
         以下是一个示例，帮助你理解任务和回答格式：
         文本："张三在苹果公司工作"
         回答：
         "实体：张三(人名)"
         "实体：苹果公司(组织)"
-        "关系：张三(人名)-工作于-苹果公司(组织)"
+        "关系：张三(人名)-属于-苹果公司(组织)"
         """
         human_msg = """
         文本："{text}"
