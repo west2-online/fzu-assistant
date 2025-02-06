@@ -8,8 +8,8 @@ from config import conf
 
 class VectorStore:
     def __init__(self, embeddings):
+        self.top_k = conf.top_k
         index = faiss.IndexFlatL2(len(embeddings.embed_query("hello world")))
-
         self.vector_store = FAISS(
             embedding_function=embeddings,
             index=index,
@@ -21,7 +21,7 @@ class VectorStore:
         self.vector_store.add_documents(documents)
 
     def query(self, question: str):
-        return self.vector_store.similarity_search(question, k=conf.top_k)
+        return self.vector_store.similarity_search(question, k=self.top_k)
 
 
 if __name__ == "__main__":
