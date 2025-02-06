@@ -24,6 +24,7 @@ mistral = ChatMistralAI(
 zhipu = ChatZhipuAI(
     model="glm-4",
     temperature=0.5,
+    zhipuai_api_key=conf.ZHIPUAI_API_KEY
 )
 
 
