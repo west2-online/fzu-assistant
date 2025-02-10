@@ -50,7 +50,7 @@ class GraphStore:
                                               input_variables=["question", "schema"])
         self.chain = GraphCypherQAChain.from_llm(
             llm, graph=self.graph, return_direct=True, return_intermediate_steps=True,
-            cypher_prompt=self.few_shot_prompt, verbose=True,
+            cypher_prompt=self.few_shot_prompt, verbose=False,
             allow_dangerous_requests=True, validate_cypher=True
         )
 
@@ -64,10 +64,3 @@ class GraphStore:
 
     def cypher(self, query: str):
         return self.graph.query(query)
-
-
-if __name__ == "__main__":
-    from llms import zhipu
-
-    graph_store = GraphStore(llm=zhipu)
-    print(graph_store.cypher("SHOW DATABASES"))  # Cypher
