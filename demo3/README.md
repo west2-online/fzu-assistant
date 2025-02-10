@@ -9,8 +9,8 @@
 1. 安装依赖
     ```commandline
     pip install --upgrade --quiet langchain langchain_community jq json-repair networkx langchain-core langchain-experimental langchain-mistralai langchain-neo4j langchain-chroma
-    pip install --upgrade --quiet  langchain-huggingface text-generation google-search-results numexpr langchainhub sentencepiece jinja2 bitsandbytes accelerate
-    pip install --upgrade --quiet tqdm transformers unstructured neo4j chromadb faiss
+    pip install --upgrade --quiet  langchain-huggingface text-generation google-search-results numexpr langchainhub sentencepiece jinja2 bitsandbytes accelerate 
+    pip install --upgrade --quiet tqdm transformers unstructured neo4j chromadb faiss langgraph
     ```
 
 2. 安装neo4j
