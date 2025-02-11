@@ -3,6 +3,7 @@ from langchain_core.prompts import FewShotPromptTemplate, PromptTemplate
 from langchain_core.example_selectors import SemanticSimilarityExampleSelector
 from langchain_neo4j import GraphCypherQAChain, Neo4jGraph
 from langchain_community.vectorstores import Neo4jVector
+from retry import retry
 import typing as t
 from utils import GraphTransformer
 from config import conf
@@ -43,8 +44,7 @@ class GraphStore:
     def __init__(self, llm):
         self.graph = Neo4jGraph(url=conf.neo4j.url,
                                 username=conf.neo4j.username,
-                                password=conf.neo4j.password,
-                                database=conf.neo4j.database)
+                                password=conf.neo4j.password)
         self.graph_transformer = GraphTransformer(llm=llm)
         self.few_shot_prompt = PromptTemplate(template=self.cypher_generate_prompt,
                                               input_variables=["question", "schema"])
@@ -59,8 +59,22 @@ class GraphStore:
         self.graph.add_graph_documents(graph_documents, baseEntityLabel=True, include_source=True)
 
     def query(self, question: str):
-        result = self.chain.invoke({"query": question}, return_only_outputs=True)
+        @retry(tries=3)
+        def _query(question: str):
+            result = self.chain.invoke({"query": question}, return_only_outputs=True)
+            return result
+        try:
+            result = _query(question)
+        except Exception as e:
+            result = {}
         return result
 
     def cypher(self, query: str):
         return self.graph.query(query)
+
+
+if __name__ == "__main__":
+    from llms import tool_llm
+    graph_store = GraphStore(llm=llm)
+    result = graph_store.cypher("show databases;")
+    print(result)

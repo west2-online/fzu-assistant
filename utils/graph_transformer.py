@@ -24,31 +24,29 @@ class RelationSchema(BaseModel):
 
 
 class GraphSchema(BaseModel):
-    entities: t.List[EntitySchema]
     relations: t.List[RelationSchema]
 
 
 class GraphTransformer:
     def __init__(self, llm, prompt: t.Optional[ChatPromptTemplate] = None, schema: t.Optional[BaseModel] = None):
+        text = """
+        # 寝室生活 ## 铜盘 寝室外配备了共享洗衣机，隔层有饮水机； 浴室与厕所干湿分离； 一人一套“上床下桌”：床铺宽90cm，长200cm，蚊帐架高110cm； ## 旗山 洗衣机需自购；饮水可以订购桶装水，买一个电动抽水装上比较便宜； 浴室与厕所不干湿分离，在同一间； 一人一套“上床下桌”：床铺宽90cm，长195cm，蚊帐架高110cm，不过部分床位的蚊帐架可能被拆除； 搬到旗山后，宿舍位置大概率不会再改变，可以买一架电脑椅提高舒适度！计算机专业的同学也可以购置一台24寸或者27寸的显示器； 宿舍家具损坏报修需要前往 智汇福大app->我的服务->公寓报修，一般情况下第二天就会有维修人员上门维修； 旗山宿舍的桌子不会像铜盘那么干净，可以贴上桌面贴纸或者铺上桌垫； <Callout type="info"> (非广告,自用的) 旗山校区送水微信: wwww_968968, 手机: 150 8007 1312 会直接给你送水到宿舍门口(不论几层), 桶押金不超过 30, 一桶水 15, 可以喝约半个月(按 4 人算)
+        """
         self.prompt = prompt or self.create_prompt()
         self.schema = schema or GraphSchema
         self.parser = self.create_parser()
-        self.chain = self.prompt | llm | self.parser
+        # self.chain = self.prompt | llm | self.parser
+        self.chain = self.prompt | llm | self.extract_json
 
     def convert_to_graph_documents(self, documents: t.List[Document]) -> t.List[GraphDocument]:
         return [self.process_response(document=document) for document in tqdm(documents)]
 
     def process_response(self, document: Document) -> GraphDocument:
-        raw_result = self.chain.invoke({"text": document.page_content})
-        json_result = json.loads(raw_result.model_dump_json())
+        json_result = self.chain.invoke({"text": document.page_content})
         nodes_set = set()
         relationships = []
-        # for ent in json_result.get("entities"):
-        #     entity = ent.get("entity")
-        #     entity_type = ent.get("entity_type")
-        #     # nodes_set.add((entity, entity_type))
-
-        for rel in json_result.get("relations"):
+        print(json_result)
+        for rel in json_result:
             start_entity = rel.get("start_entity").get("entity")
             start_entity_type = rel.get("start_entity").get("entity_type")
             relation = rel.get("relation")
@@ -70,20 +68,68 @@ class GraphTransformer:
         return GraphDocument(nodes=nodes, relationships=relationships, source=document)
 
     def create_prompt(self) -> ChatPromptTemplate:
-        system_msg = """# 我需要你根据文本提取出实体以及实体之间的关系。
+        output_schema = """[
+                {
+                    "start_entity": {
+                        "entity": "",
+                        "entity_type": ""
+                    },
+                    "relation": "",
+                    "end_entity": {
+                        "entity": "",
+                        "entity_type": ""
+                    }
+                }
+            ]"""
+        one_shot_output = """[
+                {
+                    "start_entity": {
+                        "entity": "张三",
+                        "entity_type": "人"
+                    },
+                    "relation": "属于",
+                    "end_entity": {
+                        "entity": "苹果公司",
+                        "entity_type": "公司"
+                    }
+                },
+                {
+                    "start_entity": {
+                        "entity": "李四",
+                        "entity_type": "人"
+                    },
+                    "relation": "属于",
+                    "end_entity": {
+                        "entity": "苹果公司",
+                        "entity_type": "公司"
+                    }
+                },
+                {
+                    "start_entity": {
+                        "entity": "张三",
+                        "entity_type": "人"
+                    },
+                    "relation": "同事",
+                    "end_entity": {
+                        "entity": "李四",
+                        "entity_type": "人"
+                    }
+                }
+            ]"""
+        system_msg = """
+        # 我需要你根据文本提取实体之间的关系。
         ## 输出要求
-        - 实体：明确指出文本中出现的所有具有特定意义的名词或名词短语，如人名、地名、组织名等。相似的实体请归纳为一种。
+        - 实体：明确指出文本中出现的所有具有特定意义的名词或名词短语，如人、地点、组织等。相似的实体请归纳为一种。
         - 关系：准确描述实体之间的联系，关系词要能清晰表达这种联系，例如“拥有”“属于”“位于”等。相似的关系请选择最常见的那一种。
-        - 输出格式：
-          - "实体：{entity}({entity_type})"
-          - "关系：{start_entity}({start_entity_type})-{relation}-{end_entity}({end_entity_type})"
-        
+        - 输出形式: 使用json列表进行表示，不要进行任何描述。注意避免重复输出同一组关系。
+        - 输出格式: {output_schema}
+
         以下是一个示例，帮助你理解任务和回答格式：
-        文本："张三在苹果公司工作"
+        文本："张三在苹果公司工作, 李四也在苹果公司工作"
         回答：
-        "实体：张三(人名)"
-        "实体：苹果公司(组织)"
-        "关系：张三(人名)-属于-苹果公司(组织)"
+        ```json
+            {one_shot_output}
+        ```
         """
         human_msg = """
         文本："{text}"
@@ -97,13 +143,8 @@ class GraphTransformer:
             ],
             input_variables=["text"],
             partial_variables={
-                "entity": "{实体}",
-                "entity_type": "{实体类型}",
-                "start_entity": "{起点实体}",
-                "start_entity_type": "{起点实体类型}",
-                "relation": "{关系}",
-                "end_entity": "{终点实体}",
-                "end_entity_type": "{终点实体类型}"
+                "output_schema": output_schema,
+                "one_shot_output": one_shot_output
             })
         return prompt
 
@@ -159,25 +200,38 @@ class GraphTransformer:
                             )
 
             return self.schema(
-                entities=list(entity_store.values()),
                 relations=relations
             )
 
         return er_parser
 
+    @staticmethod
+    def extract_json(result: t.Union[AIMessage, str]) -> dict:
+        text = result if isinstance(result, str) else result.content
+        pattern = r'(?i)```\s*json\s*(.*?)\s*```'
+        matches = re.findall(pattern, text, re.DOTALL)
+        
+        if not matches:
+            return []
+        last_json_str = matches[-1].strip()
+
+        try:
+            return json.loads(last_json_str)
+        except json.decoder.JSONDecodeError:
+            try:
+                # 尾部逗号问题
+                fixed = re.sub(r',\s*}', '}', re.sub(r',\s*]', ']', last_json_str))
+                return json.loads(fixed)
+            except json.decoder.JSONDecodeError:
+                try:
+                    return eval(last_json_str)
+                except:
+                    return []
 
 if __name__ == "__main__":
-    from langchain_mistralai import ChatMistralAI
-    mistral = ChatMistralAI(
-        model="mistral-large-latest",
-        temperature=0,
-        max_retries=2
-    )
-    llm_transformer = GraphTransformer(mistral)
-
     text = """
     # 寝室生活 ## 铜盘 寝室外配备了共享洗衣机，隔层有饮水机； 浴室与厕所干湿分离； 一人一套“上床下桌”：床铺宽90cm，长200cm，蚊帐架高110cm； ## 旗山 洗衣机需自购；饮水可以订购桶装水，买一个电动抽水装上比较便宜； 浴室与厕所不干湿分离，在同一间； 一人一套“上床下桌”：床铺宽90cm，长195cm，蚊帐架高110cm，不过部分床位的蚊帐架可能被拆除； 搬到旗山后，宿舍位置大概率不会再改变，可以买一架电脑椅提高舒适度！计算机专业的同学也可以购置一台24寸或者27寸的显示器； 宿舍家具损坏报修需要前往 智汇福大app->我的服务->公寓报修，一般情况下第二天就会有维修人员上门维修； 旗山宿舍的桌子不会像铜盘那么干净，可以贴上桌面贴纸或者铺上桌垫； <Callout type="info"> (非广告,自用的) 旗山校区送水微信: wwww_968968, 手机: 150 8007 1312 会直接给你送水到宿舍门口(不论几层), 桶押金不超过 30, 一桶水 15, 可以喝约半个月(按 4 人算)
     """
     documents = [Document(text)]
-    graph_documents = llm_transformer.convert_to_graph_documents(documents)
-    print(graph_documents)
+    # graph_documents = llm_transformer.convert_to_graph_documents(documents)
+    # print(graph_documents)

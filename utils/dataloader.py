@@ -24,7 +24,7 @@ class DataLoader:
 
     def load_and_split(self):
         docs = []
-        print(os.listdir(self.data_dir))
+        print("files:", os.listdir(self.data_dir))
         for file_path in os.listdir(self.data_dir):
             full_path = os.path.join(self.data_dir, file_path)
             with open(full_path, "r", encoding="UTF-8") as f:

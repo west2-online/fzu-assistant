@@ -4,19 +4,21 @@ from langgraph.graph import StateGraph, END
 from utils import AmbiguityLevel, QuestionCompleter, DataLoader
 from graph_store import GraphStore
 from vector_store import VectorStore
-from llms import zhipu
+from llms import chat_llm, tool_llm
 from embeddings import embeddings
 
-llm = zhipu
-graph_store = GraphStore(llm=llm)
+graph_store = GraphStore(llm=tool_llm)
 vector_store = VectorStore(embeddings=embeddings)
+print("init store")
 
 loader = DataLoader("./data")
 documents = loader.load_and_split()
 vector_store.add_documents(documents=documents)
-
-ambiguity_level = AmbiguityLevel(llm=llm)
-question_completer = QuestionCompleter(llm=llm)
+# graph_store.add_documents(documents=documents)
+print("add documents")
+exit()
+ambiguity_level = AmbiguityLevel(llm=tool_llm)
+question_completer = QuestionCompleter(llm=tool_llm)
 
 
 class State(TypedDict):
@@ -54,6 +56,8 @@ def start_parallel_queries(state: State) -> State:
     with ThreadPoolExecutor(max_workers=2) as t:
         tasks = [t.submit(vector_store.query, state["user_question"]),
                  t.submit(graph_store.query, state["user_question"])]
+        # tasks = [t.submit(vector_store.query, state["user_question"]),
+        #          t.submit(graph_store.query, state["user_question"])]
         state["vector_results"] = tasks[0].result()
         state["graph_results"] = tasks[1].result().get("result")
     return state
@@ -68,7 +72,7 @@ def format_response(state: State) -> State:
     【图数据库检索结果】
     {state["graph_results"]}
     """
-    state["response"] = llm.invoke(prompt)
+    state["response"] = chat_llm.invoke(prompt)
     return state
 
 
