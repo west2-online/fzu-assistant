@@ -7,16 +7,7 @@ from vector_store import VectorStore
 from llms import chat_llm, tool_llm
 from embeddings import embeddings
 
-graph_store = GraphStore(llm=tool_llm)
-vector_store = VectorStore(embeddings=embeddings)
-print("init store")
 
-loader = DataLoader("./data")
-documents = loader.load_and_split()
-vector_store.add_documents(documents=documents)
-# graph_store.add_documents(documents=documents)
-print("add documents")
-exit()
 ambiguity_level = AmbiguityLevel(llm=tool_llm)
 question_completer = QuestionCompleter(llm=tool_llm)
 
