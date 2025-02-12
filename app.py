@@ -1,13 +1,15 @@
 from typing import TypedDict, Optional, List
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, ALL_COMPLETED
 from langgraph.graph import StateGraph, END
+from langgraph.types import StreamWriter
 from utils import AmbiguityLevel, QuestionCompleter, DataLoader
 from graph_store import GraphStore
 from vector_store import VectorStore
-from llms import chat_llm, tool_llm
+from llms import chat_llm, tool_llm, query_stream
 from embeddings import embeddings
 
-
+graph_store = GraphStore(llm=tool_llm)
+vector_store = VectorStore(embeddings=embeddings)
 ambiguity_level = AmbiguityLevel(llm=tool_llm)
 question_completer = QuestionCompleter(llm=tool_llm)
 
@@ -22,7 +24,7 @@ class State(TypedDict):
     response: Optional[str]
 
 
-def assess_ambiguity(state: State) -> State:
+def assess_ambiguity(state: State, writer: StreamWriter) -> State:
     """判断问题模糊程度"""
     level_action_map = {
         3: "clarify_question",
@@ -31,7 +33,7 @@ def assess_ambiguity(state: State) -> State:
     }
     level = ambiguity_level(state["user_question"])
     state["ambiguity_level"] = level_action_map[level]
-    print(state)
+    writer(state["ambiguity_level"])
     return state
 
 
@@ -42,28 +44,46 @@ def clarify_question(state: State) -> State:
     return state
 
 
-def start_parallel_queries(state: State) -> State:
+def start_parallel_queries(state: State, writer: StreamWriter) -> State:
     """并行查询入口"""
-    with ThreadPoolExecutor(max_workers=2) as t:
-        tasks = [t.submit(vector_store.query, state["user_question"]),
-                 t.submit(graph_store.query, state["user_question"])]
-        # tasks = [t.submit(vector_store.query, state["user_question"]),
-        #          t.submit(graph_store.query, state["user_question"])]
-        state["vector_results"] = tasks[0].result()
-        state["graph_results"] = tasks[1].result().get("result")
+    # with ThreadPoolExecutor(max_workers=2) as t:
+    #     tasks = [t.submit(vector_store.query, state["user_question"]),
+    #              t.submit(graph_store.query, state["user_question"])]
+    #     # tasks = [t.submit(vector_store.query, state["user_question"]),
+    #     #          t.submit(graph_store.query, state["user_question"])]
+    #     state["vector_results"] = tasks[0].result()
+    #     state["graph_results"] = tasks[1].result().get("result")
+    state["vector_results"] = vector_store.query(state["user_question"])
+    writer(state["vector_results"])
+    state["graph_results"] = graph_store.query(state["user_question"])
+    writer(state["graph_results"])
     return state
 
 
-def format_response(state: State) -> State:
+def format_response(state: State, writer: StreamWriter) -> State:
     prompt = f"""
     用户的问题是：{state["user_question"]}
-    请根据用户的问题，并且综合以下来自结构化与非结构化数据源的信息，生成全面、准确且连贯的回答：
+    请根据用户的问题，并且综合以下系统的结构化与非结构化数据源的信息，生成全面、准确且连贯的回答。
+    请注意，如果你不确定答案的时候，请告诉用户通过查询得到答案。
+    请格外注意，如果涉及学校政策（如：保研，新生入学安排等），不可直接回答，在已知相关政策链接的情况下推荐链接，不知道链接的情况下告诉用户可以查询福州大学教务处官网。
     【向量数据库检索结果】
     {[doc.page_content for doc in state["vector_results"]]}
     【图数据库检索结果】
     {state["graph_results"]}
     """
-    state["response"] = chat_llm.invoke(prompt)
+    # state["response"] = chat_llm.invoke(prompt)
+    write = False
+    state["response"] = ""
+    for chunk in chat_llm.stream(prompt):
+        content = chunk.content
+        if content:
+            state["response"] += content
+            if write:
+                writer(content)
+            if "<｜Assistant｜>" in state["response"]:
+                write = True
+                state["response"] = state["response"].split("<｜Assistant｜>")[1]
+                writer(state["response"])
     return state
 
 
@@ -106,8 +126,11 @@ graph = builder.compile()
 import time
 start = time.time()
 state = State(user_question="福州大学有哪些校区？")
-result = graph.invoke(state)
+# result = graph.invoke(state)
+for chunk in graph.stream(state, stream_mode="custom"):
+    print(chunk)
 print("time:", time.time()-start)
-resp = result.get("response")
-print(resp)
-
+resp = chunk.get("response")
+# print(resp.content)
+print("-"*30)
+print(resp.split("<｜Assistant｜>")[1])
