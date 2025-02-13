@@ -2,46 +2,23 @@ from typing import TypedDict, Optional, List
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, ALL_COMPLETED
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
-from utils import AmbiguityLevel, QuestionCompleter, DataLoader
+import yaml
+from utils import AmbiguityLevel, QuestionCompleter
 from graph_store import GraphStore
 from vector_store import VectorStore
-from llms import chat_llm, tool_llm, query_stream
+from llms import chat_llm, tool_llm
 from embeddings import embeddings
 
 graph_store = GraphStore(llm=tool_llm)
 vector_store = VectorStore(embeddings=embeddings)
-ambiguity_level = AmbiguityLevel(llm=tool_llm)
-question_completer = QuestionCompleter(llm=tool_llm)
 
 
 class State(TypedDict):
     user_question: str
-    ambiguity_level: Optional[str]
     vector_results: Optional[List[str]]
     graph_results: Optional[List[str]]
-    web_results: Optional[List[str]]
-    combined_results: Optional[str]
     response: Optional[str]
 
-
-def assess_ambiguity(state: State, writer: StreamWriter) -> State:
-    """判断问题模糊程度"""
-    level_action_map = {
-        3: "clarify_question",
-        2: "direct_query",
-        1: "direct_query"
-    }
-    level = ambiguity_level(state["user_question"])
-    state["ambiguity_level"] = level_action_map[level]
-    writer(state["ambiguity_level"])
-    return state
-
-
-def clarify_question(state: State) -> State:
-    """追问更多信息"""
-    # 这里添加实际追问逻辑
-    state["response"] = question_completer(question=state["user_question"])
-    return state
 
 
 def start_parallel_queries(state: State, writer: StreamWriter) -> State:
@@ -53,9 +30,9 @@ def start_parallel_queries(state: State, writer: StreamWriter) -> State:
     #     #          t.submit(graph_store.query, state["user_question"])]
     #     state["vector_results"] = tasks[0].result()
     #     state["graph_results"] = tasks[1].result().get("result")
-    state["vector_results"] = vector_store.query(state["user_question"])
+    state["vector_results"] = yaml.dump([doc.page_content for doc in vector_store.query(state["user_question"])], allow_unicode=True)
     writer(state["vector_results"])
-    state["graph_results"] = graph_store.query(state["user_question"])
+    state["graph_results"] = yaml.dump(graph_store.query(state["user_question"]), allow_unicode=True)
     writer(state["graph_results"])
     return state
 
@@ -63,11 +40,11 @@ def start_parallel_queries(state: State, writer: StreamWriter) -> State:
 def format_response(state: State, writer: StreamWriter) -> State:
     prompt = f"""
     用户的问题是：{state["user_question"]}
-    请根据用户的问题，并且综合以下系统的结构化与非结构化数据源的信息，生成全面、准确且连贯的回答。
+    请根据用户的问题，并且综合以下系统的结构化与非结构化数据源的信息，生成全面、准确的回答。
     请注意，如果你不确定答案的时候，请告诉用户通过查询得到答案。
     请格外注意，如果涉及学校政策（如：保研，新生入学安排等），不可直接回答，在已知相关政策链接的情况下推荐链接，不知道链接的情况下告诉用户可以查询福州大学教务处官网。
     【向量数据库检索结果】
-    {[doc.page_content for doc in state["vector_results"]]}
+    {state["vector_results"]}
     【图数据库检索结果】
     {state["graph_results"]}
     """
@@ -91,27 +68,13 @@ def format_response(state: State, writer: StreamWriter) -> State:
 builder = StateGraph(State)
 
 # 添加节点
-builder.add_node("assess_ambiguity", assess_ambiguity)
-
-builder.add_node("clarify_question", clarify_question)
 builder.add_node("start_parallel_queries", start_parallel_queries)
 
 builder.add_node("format_response", format_response)
 
 # 设置初始节点
-builder.set_entry_point("assess_ambiguity")
+builder.set_entry_point("start_parallel_queries")
 
-# 添加条件分支
-builder.add_conditional_edges(
-    "assess_ambiguity",
-    lambda state: state["ambiguity_level"],
-    {
-        "clarify_question": "clarify_question",
-        "direct_query": "start_parallel_queries"  # 改为指向并行入口
-    }
-)
-# 添加追问循环
-builder.add_edge("clarify_question", END)
 
 # 设置并行分支（同时触发两个查询）
 builder.add_edge("start_parallel_queries", "format_response")
@@ -126,11 +89,10 @@ graph = builder.compile()
 import time
 start = time.time()
 state = State(user_question="福州大学有哪些校区？")
-# result = graph.invoke(state)
+
+# chunk = ""
 for chunk in graph.stream(state, stream_mode="custom"):
     print(chunk)
+else:
+    print(type(chunk), chunk)
 print("time:", time.time()-start)
-resp = chunk.get("response")
-# print(resp.content)
-print("-"*30)
-print(resp.split("<｜Assistant｜>")[1])
