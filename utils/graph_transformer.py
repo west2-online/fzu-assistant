@@ -45,7 +45,7 @@ class GraphTransformer:
         json_result = self.chain.invoke({"text": document.page_content})
         nodes_set = set()
         relationships = []
-        print(json_result)
+        # print(json_result)
         for rel in json_result:
             start_entity = rel.get("start_entity").get("entity")
             start_entity_type = rel.get("start_entity").get("entity_type")
