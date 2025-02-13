@@ -65,4 +65,6 @@ python train.py
 
 # TODO
 - [ ] RAG-Fusion流程构建
+- [ ] 评估
 - [ ] 知识融合
+- [ ] 使用语义层，而非生成直接cypher？
