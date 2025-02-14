@@ -4,7 +4,7 @@ from lxml import etree
 
 base= "https://jzxy.fzu.edu.cn/xsgz/"
 urls = [
-    "xshd/25.htm" for i in range(25, 0, -1)
+    f"xshd/{i}.htm" for i in range(25, 0, -1)
 ]
 urls.insert(0, "xshd.htm")
 
@@ -40,7 +40,7 @@ for url in urls:
             print(f"日期: {date}")
             print("-" * 50)
             responses.append({
-                "title": title,
+                "title": title.replace("\t", "").replace("\r", "").replace("\n", ""),
                 "link": full_link,
                 "date": date
             })
