@@ -1,3 +1,5 @@
+""" deprecated """
+
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
 from langchain_core.documents import Document

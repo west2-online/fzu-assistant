@@ -1,6 +1,7 @@
 from langchain_core.documents import Document
 import json
 import os
+import typing as t
 
 class DataLoader:
     def __init__(self, data_dir):
@@ -22,7 +23,7 @@ class DataLoader:
                     docs.append(doc)
         return docs
 
-    def load_and_split(self):
+    def load_and_split(self) -> t.List[Document]:
         docs = []
         for root, _, files in os.walk(self.data_dir):
             for file in files:
@@ -31,12 +32,30 @@ class DataLoader:
                     with open(full_path, "r", encoding="UTF-8") as f:
                         qa_lst = json.load(f)
                     for qa in qa_lst:
+                        qa["source"] = file.strip(".json")
                         doc = Document(
-                            page_content=str(qa),
+                            page_content=self.dict2str(qa),
                             metadata={"source": full_path}
                         )
                         docs.append(doc)
         return docs
+    
+    @staticmethod
+    def dict2str(dct: t.Dict[str, str]):
+        en_cn = {
+            "date": "日期",
+            "title": "标题",
+            "link": "链接",
+            "source": "来源",
+            "introduction": "简介"
+        }
+        result = ""
+        for key in dct.keys():
+            value = dct.get(key, "")
+            if en_cn.get(key, None) is not None:
+                key = en_cn.get(key, None)
+            result += f"{key}: {value}\n"
+        return result
 
 
 if __name__ == "__main__":
