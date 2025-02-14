@@ -44,12 +44,11 @@ for url in urls:
                 "link": full_link,
                 "date": date
             })
-            with open('紫金学工通知.json', 'w', encoding='utf-8') as f:
-                json.dump(responses, f, ensure_ascii=False)
-            print("数据已成功写入 output.json 文件。")
     else:
         print("未找到指定的列表。")
 else:
     print(f"请求失败，状态码: {response.status_code}")
 
-print(responses)
+with open('紫金学工通知.json', 'w', encoding='utf-8') as f:
+    json.dump(responses, f, ensure_ascii=False)
+print("数据已成功写入 output.json 文件。")
