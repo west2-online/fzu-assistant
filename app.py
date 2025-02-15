@@ -1,4 +1,4 @@
-from typing import TypedDict, Optional, List
+import typing as t
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, ALL_COMPLETED
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
@@ -10,12 +10,13 @@ from embeddings import embeddings
 from config import conf
 
 
-class State(TypedDict):
+class State(t.TypedDict):
     origin_query: str
-    similar_queries: Optional[List[str]]
-    vector_results: Optional[List[str]]
-    graph_results: Optional[List[str]]
-    response: Optional[str]
+    similar_queries: t.Optional[t.List[str]]
+    vector_results: t.Optional[t.List[str]]
+    graph_results: t.Optional[t.List[str]]
+    response: t.Optional[str]
+    history: t.List[str]
 
 
 graph_store = GraphStore(llm=tool_llm, 
@@ -41,7 +42,7 @@ def retrieval(state: State, writer: StreamWriter) -> State:
     state["vector_results"] = yaml.dump([doc.page_content for doc in reranked_result], allow_unicode=True)
     # writer(state["vector_results"])
     state["graph_results"] = []
-    state["graph_results"] = yaml.dump(graph_store.query(state["origin_query"]), allow_unicode=True)
+    # state["graph_results"] = yaml.dump(graph_store.query(state["origin_query"]), allow_unicode=True)
     # writer(state["graph_results"])
     return state
 
@@ -56,21 +57,16 @@ def format_response(state: State, writer: StreamWriter) -> State:
     【图数据库检索结果】
     {state["graph_results"]}
     """
-    writer(prompt)
-    state["response"] = chat_llm.invoke(prompt).content
-    writer(state["response"])
+    # writer(prompt)
+    # state["response"] = chat_llm.invoke(prompt).content
+    # writer(state["response"])
 
-    # write = False
-    # for chunk in chat_llm.stream(prompt):
-    #     content = chunk.content
-    #     if content:
-    #         state["response"] += content
-    #         if write:
-    #             writer(content)
-    #         if "<｜Assistant｜>" in state["response"]:
-    #             write = True
-    #             state["response"] = state["response"].split("<｜Assistant｜>")[1]
-    #             writer(state["response"])
+    state["response"] = ""
+    for chunk in chat_llm.stream(prompt):
+        content = chunk
+        if content:
+            state["response"] += content
+            writer(content)
     return state
 
                                                      
@@ -84,14 +80,29 @@ builder = (StateGraph(State).add_node("generate_similar_queries", generate_simil
 
 graph = builder.compile()
 
-question = "校友入校要申请什么？"
+
+print("\033[46m'输入'exit'退出\033[0m")
 while True:
+    question = input("\033[36m输入：\033[0m")
+    question = "福州大学的校训是什么？"
     if question == "exit":
         break
     state = State(origin_query=question)
     start = time.perf_counter()
     for chunk in graph.stream(state, stream_mode="custom"):
         print(chunk, end="")
-        pass
     print("time:", time.perf_counter()-start)
-    question = input("输入：")
+
+
+# measure speed
+# for _ in range(10):
+#     # question = input("\033[36m输入：\033[0m")
+#     question = "福州大学的校训是什么？"
+#     if question == "exit":
+#         break
+#     state = State(origin_query=question)
+#     start = time.perf_counter()
+#     for chunk in graph.stream(state, stream_mode="custom"):
+#         # print(chunk, end="")
+#         pass
+#     print("time:", time.perf_counter()-start)
