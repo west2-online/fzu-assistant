@@ -32,7 +32,7 @@ class DataLoader:
                     with open(full_path, "r", encoding="UTF-8") as f:
                         qa_lst = json.load(f)
                     for qa in qa_lst:
-                        qa["source"] = file.strip(".json")
+                        qa["source"] = file.removesuffix('.json')
                         doc = Document(
                             page_content=self.dict2str(qa),
                             metadata={"source": full_path}

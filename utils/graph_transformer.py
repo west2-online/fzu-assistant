@@ -41,7 +41,7 @@ class GraphTransformer:
         self.chain = self.prompt | llm | self.extract_json
 
     def convert_to_graph_documents(self, documents: t.List[Document]) -> t.List[GraphDocument]:
-        return [self.process_response(document=document) for document in tqdm(documents)]
+        return [self.process_response(document=document) for document in documents]
 
     def process_response(self, document: Document) -> GraphDocument:
         json_result = self.chain.invoke({"text": document.page_content})

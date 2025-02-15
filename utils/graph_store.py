@@ -1,5 +1,3 @@
-""" deprecated """
-
 from langchain_core.documents import Document
 from langchain_core.prompts import FewShotPromptTemplate, PromptTemplate
 from langchain_core.example_selectors import SemanticSimilarityExampleSelector
@@ -63,17 +61,17 @@ class GraphStore:
             用户输入: 铜盘校区配备的什么物品？
             Cypher语句: 
             ```cypher
-            MATCH (p: {{id: '铜盘'}})-[r]-(v) RETURN p, r, v;
+            MATCH (p: {{id: '铜盘'}})-[r]-(v) RETURN p, r, v LIMIT 30;
             ```
         示例2：
             用户输入: 介绍一下福州大学相关的东西
             ```cypher
-            Cypher语句: MATCH (fzu {{id: "福州大学"}})-[r]-(v) RETURN fzu, r, v;
+            Cypher语句: MATCH (fzu {{id: "福州大学"}})-[r]-(v) RETURN fzu, r, v LIMIT 30;
             ```
         示例3：
             用户输入：福州大学有哪些校区?
             ```cypher
-            Cypher语句：MATCH (fzu {{id: "福州大学"}})-[r]-(v) WHERE v.id CONTAINS "校区" RETURN fzu, r, v;
+            Cypher语句：MATCH (fzu {{id: "福州大学"}})-[r]-(v) WHERE v.id CONTAINS "校区" RETURN fzu, r, v LIMIT 30;
             ```
 
         ## 待处理查询
@@ -87,6 +85,11 @@ class GraphStore:
         pattern = r'(?i)```\s*cypher\s*(.*?)\s*```'
         matches = re.findall(pattern, text, re.DOTALL)
         return matches[-1].strip()
+    
+    def command_search(self):
+        while (inp:=input("检索：")) != "exit":
+            res = self.query(inp)
+            print(res)
 
 
 if __name__ == "__main__":

@@ -3,20 +3,11 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, ALL_CO
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
 import yaml
-from utils import VectorStore, QueryGenerator
-# from graph_store import GraphStore
-# from llms import chat_llm, tool_llm
+import time
+from utils import VectorStore, GraphStore, QueryGenerator, reciprocal_rank_fusion
+from llms import chat_llm, tool_llm
 from embeddings import embeddings
 from config import conf
-
-
-# graph_store = GraphStore(llm=tool_llm)
-vector_store = VectorStore(embeddings=embeddings, 
-                           storage_dir=conf.faiss.storage_dir, 
-                           top_k=conf.top_k)
-print(vector_store.query("福州大学"))
-exit()
-query_generator = QueryGenerator(llm=tool_llm)
 
 
 class State(TypedDict):
@@ -27,87 +18,80 @@ class State(TypedDict):
     response: Optional[str]
 
 
+graph_store = GraphStore(llm=tool_llm, 
+                         url=conf.neo4j.url,
+                         username=conf.neo4j.username,
+                         password=conf.neo4j.password)
+vector_store = VectorStore(embeddings=embeddings, 
+                           storage_dir=conf.storage_dir.notice, 
+                           top_k=conf.top_k)
+query_generator = QueryGenerator(llm=tool_llm)
+
+
 def generate_similar_queries(state: State, writer: StreamWriter) -> State:
     state["similar_queries"] = query_generator(state["origin_query"])
+    writer(state["similar_queries"])
     return state
-def start_parallel_queries(state: State, writer: StreamWriter) -> State:
-    """并行查询入口"""
-    # with ThreadPoolExecutor(max_workers=2) as t:
-    #     tasks = [t.submit(vector_store.query, state["origin_query"]),
-    #              t.submit(graph_store.query, state["origin_query"])]
-    #     # tasks = [t.submit(vector_store.query, state["origin_query"]),
-    #     #          t.submit(graph_store.query, state["origin_query"])]
-    #     state["vector_results"] = tasks[0].result()
-    #     state["graph_results"] = tasks[1].result().get("result")
-    vector_search_result = {
-        "origin_query": vector_store.query(state["origin_query"]),
-        "similar_queries": [vector_store.query(similar_query) for similar_query in state["similar_queries"]]
-    }
-    writer(vector_search_result)
-    exit()
-    state["vector_results"] = yaml.dump([doc.page_content for doc in vector_store.query(state["origin_query"])], allow_unicode=True)
-    writer(state["vector_results"])
+
+def retrieval(state: State, writer: StreamWriter) -> State:    
+    result = [
+        vector_store.query(query) for query in [state["origin_query"]] + state["similar_queries"]
+    ]
+    reranked_result = reciprocal_rank_fusion(result)
+    state["vector_results"] = yaml.dump([doc.page_content for doc in reranked_result], allow_unicode=True)
+    # writer(state["vector_results"])
+    state["graph_results"] = []
     state["graph_results"] = yaml.dump(graph_store.query(state["origin_query"]), allow_unicode=True)
-    writer(state["graph_results"])
+    # writer(state["graph_results"])
     return state
 
 
 def format_response(state: State, writer: StreamWriter) -> State:
     prompt = f"""
     用户的问题是：{state["origin_query"]}
-    请根据用户的问题，并且综合以下系统的结构化与非结构化数据源的信息，生成全面、准确的回答。
-    请注意，如果你不确定答案的时候，请告诉用户通过查询得到答案。
-    请格外注意，如果涉及学校政策（如：保研，新生入学安排等），不可直接回答，在已知相关政策链接的情况下推荐链接，不知道链接的情况下告诉用户可以查询福州大学教务处官网。
+    请根据用户的问题，并且综合以下系统的搜索出的数据源的信息，不要做过多描述。
+    请格外注意，如果涉及学校通知或者政策（如：保研，新生入学安排等），请直接将相关通知或政策的链接告知用户
     【向量数据库检索结果】
     {state["vector_results"]}
     【图数据库检索结果】
     {state["graph_results"]}
     """
-    # state["response"] = chat_llm.invoke(prompt)
-    write = False
-    state["response"] = ""
-    for chunk in chat_llm.stream(prompt):
-        content = chunk.content
-        if content:
-            state["response"] += content
-            if write:
-                writer(content)
-            if "<｜Assistant｜>" in state["response"]:
-                write = True
-                state["response"] = state["response"].split("<｜Assistant｜>")[1]
-                writer(state["response"])
+    writer(prompt)
+    state["response"] = chat_llm.invoke(prompt).content
+    writer(state["response"])
+
+    # write = False
+    # for chunk in chat_llm.stream(prompt):
+    #     content = chunk.content
+    #     if content:
+    #         state["response"] += content
+    #         if write:
+    #             writer(content)
+    #         if "<｜Assistant｜>" in state["response"]:
+    #             write = True
+    #             state["response"] = state["response"].split("<｜Assistant｜>")[1]
+    #             writer(state["response"])
     return state
 
+                                                     
+builder = (StateGraph(State).add_node("generate_similar_queries", generate_similar_queries)
+ .add_node("retrieval", retrieval)
+ .add_node("format_response", format_response)
+ .set_entry_point("generate_similar_queries")
+ .add_edge("generate_similar_queries", "retrieval")
+ .add_edge("retrieval", "format_response")
+ .add_edge("format_response", END))
 
-# 构建流程图
-builder = StateGraph(State)
-
-# 添加节点
-builder.add_node("start_parallel_queries", start_parallel_queries)
-
-builder.add_node("format_response", format_response)
-
-# 设置初始节点
-builder.set_entry_point("start_parallel_queries")
-
-
-# 设置并行分支（同时触发两个查询）
-builder.add_edge("start_parallel_queries", "format_response")
-
-# 设置结束节点
-builder.add_edge("format_response", END)
-
-# 编译流程图
 graph = builder.compile()
 
-
-import time
-start = time.time()
-state = State(origin_query="福州大学有哪些校区？")
-
-# chunk = ""
-for chunk in graph.stream(state, stream_mode="custom"):
-    print(chunk)
-else:
-    print(type(chunk), chunk)
-print("time:", time.time()-start)
+question = "校友入校要申请什么？"
+while True:
+    if question == "exit":
+        break
+    state = State(origin_query=question)
+    start = time.perf_counter()
+    for chunk in graph.stream(state, stream_mode="custom"):
+        print(chunk, end="")
+        pass
+    print("time:", time.perf_counter()-start)
+    question = input("输入：")
