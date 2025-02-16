@@ -1,6 +1,7 @@
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import re
+import typing as t
 
 
 class QueryGenerator:
