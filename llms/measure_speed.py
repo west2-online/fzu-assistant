@@ -1,10 +1,10 @@
 import time
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from config import conf
+
 
 # 设置模型和tokenizer
-model_name = conf.chat_llm  # 替换为你的模型
+model_name = "./models/Qwen2.5-7B-Instruct-1M"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
 

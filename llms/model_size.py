@@ -1,7 +1,8 @@
 from accelerate.utils import calculate_maximum_sizes, convert_bytes
 from accelerate.commands.estimate import check_has_model, create_empty_model
 import torch
-from config import conf
+
+
 DTYPE_MODIFIER = {"float32": 1, "float16/bfloat16": 2, "int8": 4, "int4": 8}
 
 def calculate_memory(model: torch.nn.Module, options: list):
