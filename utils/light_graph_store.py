@@ -32,7 +32,7 @@ class LightGraphStore:
 
         self.query_param = QueryParam(mode=query_mode, only_need_context=True, top_k=top_k)
     
-    def insert(self, documents: t.Union[t.List[str], t.List[Document]]):
+    def train(self, documents: t.Union[t.List[str], t.List[Document]]):
         if isinstance(documents[0], Document):
             documents = [doc.page_content for doc in documents]
         self.lightrag.insert(documents)
