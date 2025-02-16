@@ -10,11 +10,12 @@
     },
     "data_dir": {
         "notice": "./data/notice",
-        "QA": "./data/QA"
+        "QA": "./data/QA",
+        "whole": "./data"
     },
     "storage_dir": {
-        "notice": "./storage/notice",
-        "QA": "./storage/QA"
+        "vector": "./storage/vector",
+        "graph": "./storage/graph"
     },
     "top_k": 20,
     "lightrag_query_mode": "mix"
