@@ -1,12 +1,10 @@
 import thriftpy2
 
-tf_service = thriftpy2.load("./thrifts/tf_service.thrift", module_name="tf_service_thrift")
+chat_service = thriftpy2.load("./thrifts/chat_service.thrift", module_name="chat_thrift")
 
 from thriftpy2.rpc import make_client
 
-client = make_client(tf_service.Min_Bar_Service, "127.0.0.1", 9000)
+client = make_client(chat_service.ChatService, "127.0.0.1", 9000)
 
-id = 42
-context = "quququsb"
-msg = client.min_bar(id, context)
+msg = client.chat("福州大学的校训是什么？")
 print(msg)
