@@ -14,7 +14,7 @@ class VLLMClient(LLM):
               prompts: t.List[str],
               stop: t.Optional[t.List[str]] = None,
               run_manager: t.Optional[CallbackManagerForLLMRun] = None,
-              **kwargs: t.Any,
+              **kwargs: t.Any
             )  -> str:
         client = OpenAI(
             api_key=self.api_key,
@@ -34,8 +34,11 @@ class VLLMClient(LLM):
             model=client.models.list().data[0].id,
             messages=messages
         )
-        return response.choices[0].message.content
-
+        if kwargs.get("monitor_token", False) is True:
+            return response.choices[0].message.content, response.usage.total_tokens
+        else:
+            return response.choices[0].message.content
+        
     def _stream(
             self,
             prompt: str,
@@ -54,9 +57,9 @@ class VLLMClient(LLM):
         }
         if history is None:
             messages = []
-            messages.append(message)
         else:
             messages = copy.copy(history)
+        messages.append(message)
         response = client.chat.completions.create(
             model=client.models.list().data[0].id,
             messages=messages,
@@ -75,10 +78,6 @@ class VLLMClient(LLM):
         history = []
         print("\033[46m'输入'exit'退出\033[0m")
         while (question:=input("\033[36m输入：\033[0m")) != "exit":
-            history.append({
-                "role": "user",
-                "content": question
-            })
             whole_answer = ""
             try:
                 print("\033[36m输出：\033[0m", end="")
@@ -88,13 +87,17 @@ class VLLMClient(LLM):
                     print(answer, end="", flush=True)
                     whole_answer += answer
             except StopIteration as e:
-                total_text_length = e.value
+                total_token = e.value
                 print()
+            history.append({
+                "role": "user",
+                "content": question
+            })
             history.append({
                 "role": "assistant",
                 "content": whole_answer
             })
-        print(f"\033[36m消耗token:\033[0m {total_text_length}")
+        print(f"\033[36m消耗token:\033[0m {total_token}")
     
     @property
     def _llm_type(self):
@@ -103,5 +106,5 @@ class VLLMClient(LLM):
 
 if __name__ == "__main__":
     llm = VLLMClient()
-    # print(llm.invoke("你好"))
-    llm.command_chat()
+    print(llm.invoke("你好"))
+    # llm.command_chat()
