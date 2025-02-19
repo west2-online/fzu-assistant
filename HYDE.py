@@ -5,45 +5,45 @@ import time
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
 
-from utils import QueryGenerator, reciprocal_rank_fusion
+from utils import PassageGenerator, reciprocal_rank_fusion
 from vector_store import VectorStore
 
 
 class State(t.TypedDict):
     origin_query: str
-    similar_queries: t.Optional[t.List[str]]
+    passage: t.Optional[t.List[str]]
     vector_results: t.Optional[t.List[str]]
     response: t.Optional[str]
     history: t.List[str]
 
 
-class RAGFusion:
+class HYDE:
     def __init__(self, tool_llm, chat_llm, embeddings, vector_storage_dir, top_k, rerank = None):
         self.tool_llm = tool_llm
         self.chat_llm = chat_llm
         self.vector_store = VectorStore(embeddings=embeddings, 
                                 storage_dir=vector_storage_dir,
                                 top_k=top_k)
-        self.query_generator = QueryGenerator(llm=tool_llm)
+        self.passage_generator = PassageGenerator(llm=tool_llm)
         self.rerank_model = rerank
-        graph_builder = (StateGraph(State).add_node("generate_similar_queries", self.generate_similar_queries)
+        graph_builder = (StateGraph(State).add_node("generate_passage", self.generate_passage)
         .add_node("retrieval", self.retrieval)
         .add_node("format_response", self.format_response)
-        .set_entry_point("generate_similar_queries")
-        .add_edge("generate_similar_queries", "retrieval")
+        .set_entry_point("generate_passage")
+        .add_edge("generate_passage", "retrieval")
         .add_edge("retrieval", "format_response")
         .add_edge("format_response", END))
 
         self.graph = graph_builder.compile()
 
-    def generate_similar_queries(self, state: State, writer: StreamWriter) -> State:
-        state["similar_queries"] = self.query_generator(state["origin_query"])
-        # writer(state["similar_queries"])
+    def generate_passage(self, state: State, writer: StreamWriter) -> State:
+        state["passage"] = self.passage_generator(state["origin_query"])
+        # writer(state["passage"])
         return state
 
     def retrieval(self, state: State, writer: StreamWriter) -> State:    
         result = [
-            self.vector_store.query(query) for query in [state["origin_query"]] + state["similar_queries"]
+            self.vector_store.query(query) for query in [state["origin_query"], state["passage"]]
         ]
         reranked_result = reciprocal_rank_fusion(result)
         if(self.rerank_model is not None):
@@ -118,10 +118,10 @@ if __name__ == "__main__":
     from embeddings import embeddings
     from config import conf
     from utils import rerank
-    rag_fusion = RAGFusion(chat_llm=chat_llm,
+    hyde = HYDE(chat_llm=chat_llm,
                            tool_llm=tool_llm,
                            embeddings=embeddings,
                            vector_storage_dir=conf.storage_dir.vector,
                            top_k=conf.top_k,
                            rerank=rerank)
-    rag_fusion.command_chat()
+    hyde.command_chat()

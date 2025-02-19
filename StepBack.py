@@ -5,49 +5,49 @@ import time
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
 
-from utils import QueryGenerator, reciprocal_rank_fusion
+from utils import StepBackGenerator, reciprocal_rank_fusion
 from vector_store import VectorStore
 
 
 class State(t.TypedDict):
     origin_query: str
-    similar_queries: t.Optional[t.List[str]]
+    stepback_query: str
     vector_results: t.Optional[t.List[str]]
     response: t.Optional[str]
     history: t.List[str]
 
 
-class RAGFusion:
+class StepBack:
     def __init__(self, tool_llm, chat_llm, embeddings, vector_storage_dir, top_k, rerank = None):
         self.tool_llm = tool_llm
         self.chat_llm = chat_llm
         self.vector_store = VectorStore(embeddings=embeddings, 
                                 storage_dir=vector_storage_dir,
                                 top_k=top_k)
-        self.query_generator = QueryGenerator(llm=tool_llm)
+        self.StepBackGenerator = StepBackGenerator(llm=tool_llm)
         self.rerank_model = rerank
-        graph_builder = (StateGraph(State).add_node("generate_similar_queries", self.generate_similar_queries)
+        graph_builder = (StateGraph(State).add_node("generate_stepback_queries", self.generate_stepback_queries)
         .add_node("retrieval", self.retrieval)
         .add_node("format_response", self.format_response)
-        .set_entry_point("generate_similar_queries")
-        .add_edge("generate_similar_queries", "retrieval")
+        .set_entry_point("generate_stepback_queries")
+        .add_edge("generate_stepback_queries", "retrieval")
         .add_edge("retrieval", "format_response")
         .add_edge("format_response", END))
 
         self.graph = graph_builder.compile()
 
-    def generate_similar_queries(self, state: State, writer: StreamWriter) -> State:
-        state["similar_queries"] = self.query_generator(state["origin_query"])
-        # writer(state["similar_queries"])
+    def generate_stepback_queries(self, state: State, writer: StreamWriter) -> State:
+        state["stepback_queries"] = self.StepBackGenerator(state["origin_query"])
+        # writer(state["stepback_queries"])
         return state
 
     def retrieval(self, state: State, writer: StreamWriter) -> State:    
         result = [
-            self.vector_store.query(query) for query in [state["origin_query"]] + state["similar_queries"]
+            self.vector_store.query(query) for query in [state["origin_query"], state["stepback_query"]]
         ]
         reranked_result = reciprocal_rank_fusion(result)
         if(self.rerank_model is not None):
-            reranked_result = self.rerank_model(state['origin_query'], reranked_result)
+            reranked_result = self.rerank_model(state['origin_query'], result)
         state["vector_results"] = yaml.dump([doc.page_content for doc in reranked_result], allow_unicode=True)
         # writer(state["vector_results"])
         return state
@@ -118,10 +118,10 @@ if __name__ == "__main__":
     from embeddings import embeddings
     from config import conf
     from utils import rerank
-    rag_fusion = RAGFusion(chat_llm=chat_llm,
+    stepb = StepBack(chat_llm=chat_llm,
                            tool_llm=tool_llm,
                            embeddings=embeddings,
                            vector_storage_dir=conf.storage_dir.vector,
                            top_k=conf.top_k,
                            rerank=rerank)
-    rag_fusion.command_chat()
+    stepb.command_chat()
