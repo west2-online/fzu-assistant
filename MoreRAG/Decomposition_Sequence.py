@@ -1,55 +1,59 @@
 import typing as t
 import yaml
 import time
-
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
-
-from utils import QueryGenerator, reciprocal_rank_fusion
+from utils import SubProblemGenerator, SubProblemSolver
 from vector_store import VectorStore
+from langchain_core.documents import Document
 
 
 class State(t.TypedDict):
     origin_query: str
-    similar_queries: t.Optional[t.List[str]]
+    sub_problems: t.Optional[t.List[str]]
     vector_results: t.Optional[t.List[str]]
     response: t.Optional[str]
     history: t.List[str]
 
 
-class RAGFusion:
+class DecompositionSequence:
     def __init__(self, tool_llm, chat_llm, embeddings, vector_storage_dir, top_k, rerank = None):
         self.tool_llm = tool_llm
         self.chat_llm = chat_llm
         self.vector_store = VectorStore(embeddings=embeddings, 
-                                storage_dir=vector_storage_dir,
-                                top_k=top_k)
-        self.query_generator = QueryGenerator(llm=tool_llm)
+                                        storage_dir=vector_storage_dir,
+                                        top_k=top_k)
+        self.sub_problem_generator = SubProblemGenerator(llm = tool_llm, isSequence = True)
+        self.sub_problem_solver = SubProblemSolver(llm = tool_llm, rerank = rerank)
         self.rerank_model = rerank
-        graph_builder = (StateGraph(State).add_node("generate_similar_queries", self.generate_similar_queries)
-        .add_node("retrieval", self.retrieval)
-        .add_node("format_response", self.format_response)
-        .set_entry_point("generate_similar_queries")
-        .add_edge("generate_similar_queries", "retrieval")
-        .add_edge("retrieval", "format_response")
-        .add_edge("format_response", END))
+        
+        graph_builder = (StateGraph(State)
+                         .add_node("generate_sub_problems", self.generate_sub_problems)
+                         .add_node("solve_sub_problems", self.solve_sub_problems)
+                         .add_node("format_response", self.format_response)
+                         .set_entry_point("generate_sub_problems")
+                         .add_edge("generate_sub_problems", "solve_sub_problems")
+                         .add_edge("solve_sub_problems", "format_response")
+                         .add_edge("format_response", END))
 
         self.graph = graph_builder.compile()
 
-    def generate_similar_queries(self, state: State, writer: StreamWriter) -> State:
-        state["similar_queries"] = self.query_generator(state["origin_query"])
-        # writer(state["similar_queries"])
+    def generate_sub_problems(self, state: State, writer: StreamWriter) -> State:
+        state["sub_problems"] = self.sub_problem_generator(state["origin_query"])
         return state
 
-    def retrieval(self, state: State, writer: StreamWriter) -> State:    
-        result = [
-            self.vector_store.query(query) for query in [state["origin_query"]] + state["similar_queries"]
-        ]
-        reranked_result = reciprocal_rank_fusion(result)
+    def solve_sub_problems(self, state: State, writer: StreamWriter) -> State:
+        last_answer = ""
+        for sub_problem in state["sub_problems"]:
+            ans = self.sub_problem_solver(sub_problem, last_answer, self.vector_store)
+            last_answer = ans
+        res = self.vector_store.query(state['origin_query'])
+        res.append(Document(
+            page_content = last_answer
+        ))
         if(self.rerank_model is not None):
-            reranked_result = self.rerank_model(state['origin_query'], reranked_result)
-        state["vector_results"] = yaml.dump([doc.page_content for doc in reranked_result], allow_unicode=True)
-        # writer(state["vector_results"])
+            res = self.rerank_model(state['origin_query'], res)
+        state['vector_results'] = yaml.dump([doc.page_content for doc in res], allow_unicode=True)
         return state
 
     def format_response(self, state: State, writer: StreamWriter) -> State:
@@ -71,21 +75,20 @@ class RAGFusion:
                 state["response"] += content
                 writer(content)
         return state
-    
+
     def measure_speed(self, question="福州大学的校训是什么？"):
         for _ in range(10):
             state = State(origin_query=question)
             start = time.perf_counter()
             for chunk in self.graph.stream(state, stream_mode="custom"):
-                # print(chunk, end="")
                 pass
             print(f"测试问题：{question} 耗时：{time.perf_counter()-start}")
-    
+
     def command_chat(self):
         history = []
         total_token = 0
         print("\033[46m'输入'exit'退出\033[0m")
-        while (question:=input("\033[36m输入：\033[0m")) != "exit":
+        while (question := input("\033[36m输入：\033[0m")) != "exit":
             start = time.perf_counter()
             print("\033[36m输出：\033[0m")
             whole_answer = ""
@@ -111,17 +114,17 @@ class RAGFusion:
             history = []
         state = State(origin_query=query, history=history)
         return self.graph.invoke(state).get("response")
-            
+
 
 if __name__ == "__main__":
     from llms import chat_llm, tool_llm
     from embeddings import embeddings
     from config import conf
     from utils import rerank
-    rag_fusion = RAGFusion(chat_llm=chat_llm,
-                           tool_llm=tool_llm,
-                           embeddings=embeddings,
-                           vector_storage_dir=conf.storage_dir.vector,
-                           top_k=conf.top_k,
-                           rerank=rerank)
-    rag_fusion.command_chat()
+    decomposition_sequence = DecompositionSequence(chat_llm=chat_llm,
+                                                  tool_llm=tool_llm,
+                                                  embeddings=embeddings,
+                                                  vector_storage_dir=conf.storage_dir.vector,
+                                                  top_k=conf.top_k,
+                                                  rerank=rerank)
+    decomposition_sequence.command_chat()
