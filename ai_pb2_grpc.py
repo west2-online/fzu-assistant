@@ -35,12 +35,12 @@ class AIAgentStub(object):
             channel: A grpc.Channel.
         """
         self.Single = channel.unary_unary(
-                '/test.AIAgent/Single',
+                '/ai_agent.AIAgent/Single',
                 request_serializer=ai__pb2.ChatRequest.SerializeToString,
                 response_deserializer=ai__pb2.ChatResponse.FromString,
                 _registered_method=True)
         self.StreamChat = channel.unary_stream(
-                '/test.AIAgent/StreamChat',
+                '/ai_agent.AIAgent/StreamChat',
                 request_serializer=ai__pb2.ChatRequest.SerializeToString,
                 response_deserializer=ai__pb2.ChatResponse.FromString,
                 _registered_method=True)
@@ -76,9 +76,9 @@ def add_AIAgentServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'test.AIAgent', rpc_method_handlers)
+            'ai_agent.AIAgent', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('test.AIAgent', rpc_method_handlers)
+    server.add_registered_method_handlers('ai_agent.AIAgent', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
@@ -99,7 +99,7 @@ class AIAgent(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/test.AIAgent/Single',
+            '/ai_agent.AIAgent/Single',
             ai__pb2.ChatRequest.SerializeToString,
             ai__pb2.ChatResponse.FromString,
             options,
@@ -126,7 +126,7 @@ class AIAgent(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/test.AIAgent/StreamChat',
+            '/ai_agent.AIAgent/StreamChat',
             ai__pb2.ChatRequest.SerializeToString,
             ai__pb2.ChatResponse.FromString,
             options,

@@ -24,19 +24,19 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x08\x61i.proto\x12\x04test\"(\n\x07Message\x12\x0c\n\x04role\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\"-\n\x0b\x43hatRequest\x12\x1e\n\x07message\x18\x01 \x03(\x0b\x32\r.test.Message\"5\n\x0c\x43hatResponse\x12\x0e\n\x06\x61nswer\x18\x01 \x01(\t\x12\x15\n\rend_of_stream\x18\x02 \x01(\x08\x32q\n\x07\x41IAgent\x12/\n\x06Single\x12\x11.test.ChatRequest\x1a\x12.test.ChatResponse\x12\x35\n\nStreamChat\x12\x11.test.ChatRequest\x1a\x12.test.ChatResponse0\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x08\x61i.proto\x12\x08\x61i_agent\"(\n\x07Message\x12\x0c\n\x04role\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\"1\n\x0b\x43hatRequest\x12\"\n\x07message\x18\x01 \x03(\x0b\x32\x11.ai_agent.Message\"5\n\x0c\x43hatResponse\x12\x0e\n\x06\x61nswer\x18\x01 \x01(\t\x12\x15\n\rend_of_stream\x18\x02 \x01(\x08\x32\x81\x01\n\x07\x41IAgent\x12\x37\n\x06Single\x12\x15.ai_agent.ChatRequest\x1a\x16.ai_agent.ChatResponse\x12=\n\nStreamChat\x12\x15.ai_agent.ChatRequest\x1a\x16.ai_agent.ChatResponse0\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ai_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_MESSAGE']._serialized_start=18
-  _globals['_MESSAGE']._serialized_end=58
-  _globals['_CHATREQUEST']._serialized_start=60
-  _globals['_CHATREQUEST']._serialized_end=105
-  _globals['_CHATRESPONSE']._serialized_start=107
-  _globals['_CHATRESPONSE']._serialized_end=160
-  _globals['_AIAGENT']._serialized_start=162
-  _globals['_AIAGENT']._serialized_end=275
+  _globals['_MESSAGE']._serialized_start=22
+  _globals['_MESSAGE']._serialized_end=62
+  _globals['_CHATREQUEST']._serialized_start=64
+  _globals['_CHATREQUEST']._serialized_end=113
+  _globals['_CHATRESPONSE']._serialized_start=115
+  _globals['_CHATRESPONSE']._serialized_end=168
+  _globals['_AIAGENT']._serialized_start=171
+  _globals['_AIAGENT']._serialized_end=300
 # @@protoc_insertion_point(module_scope)
