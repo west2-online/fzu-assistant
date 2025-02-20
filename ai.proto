@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package test;
+package ai_agent;
 
 message Message {
   string role = 1;
