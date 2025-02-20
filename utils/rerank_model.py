@@ -10,7 +10,7 @@ def rerank(query, documents:t.List[Document]) -> t.List[Document]:
     
     scores = model.compute_score(input_pairs)
     
-    ranked_documents = [doc for _, doc in sorted(zip(scores, documents), reverse=True)]
+    ranked_documents = [doc for _, doc in sorted(zip(scores, documents), key = lambda x: x[0], reverse=True)]
     
     return ranked_documents
 

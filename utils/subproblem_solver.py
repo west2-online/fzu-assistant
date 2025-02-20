@@ -13,9 +13,9 @@ class SubProblemSolver:
             res.append(Document(
                 page_content = last_answer
             ))#将上一个答案加入查询结果中
-        result = yaml.dump([doc.page_content for doc in res], allow_unicode=True)
         if(self.rerank is not None):
-            result = self.rerank(query, result)
+            res = self.rerank(query, res)
+        result = yaml.dump([doc.page_content for doc in res], allow_unicode=True)
         return self.generate_answer(query, result)
     
     def generate_answer(self, query:str, result:str) -> str:

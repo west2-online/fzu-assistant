@@ -1,7 +1,10 @@
 import typing as t
 import yaml
 import time
-
+import os
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
 
@@ -26,19 +29,19 @@ class StepBack:
                                 top_k=top_k)
         self.StepBackGenerator = StepBackGenerator(llm=tool_llm)
         self.rerank_model = rerank
-        graph_builder = (StateGraph(State).add_node("generate_stepback_queries", self.generate_stepback_queries)
+        graph_builder = (StateGraph(State).add_node("generate_stepback_query", self.generate_stepback_query)
         .add_node("retrieval", self.retrieval)
         .add_node("format_response", self.format_response)
-        .set_entry_point("generate_stepback_queries")
-        .add_edge("generate_stepback_queries", "retrieval")
+        .set_entry_point("generate_stepback_query")
+        .add_edge("generate_stepback_query", "retrieval")
         .add_edge("retrieval", "format_response")
         .add_edge("format_response", END))
 
         self.graph = graph_builder.compile()
 
-    def generate_stepback_queries(self, state: State, writer: StreamWriter) -> State:
-        state["stepback_queries"] = self.StepBackGenerator(state["origin_query"])
-        # writer(state["stepback_queries"])
+    def generate_stepback_query(self, state: State, writer: StreamWriter) -> State:
+        state["stepback_query"] = self.StepBackGenerator(state["origin_query"])
+        # writer(state["stepback_query"])
         return state
 
     def retrieval(self, state: State, writer: StreamWriter) -> State:    
@@ -47,7 +50,7 @@ class StepBack:
         ]
         reranked_result = reciprocal_rank_fusion(result)
         if(self.rerank_model is not None):
-            reranked_result = self.rerank_model(state['origin_query'], result)
+            reranked_result = self.rerank_model(state['origin_query'], reranked_result)
         state["vector_results"] = yaml.dump([doc.page_content for doc in reranked_result], allow_unicode=True)
         # writer(state["vector_results"])
         return state
