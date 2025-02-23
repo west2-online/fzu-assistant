@@ -7,7 +7,7 @@ import yaml
 import time
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
-from utils import SubProblemGenerator, SubProblemSolver
+from utils import SubProblemGenerator, SubProblemSolver, Rerank, InputFilter
 from vector_store import VectorStore
 from langchain_core.documents import Document
 
@@ -21,15 +21,19 @@ class State(t.TypedDict):
 
 
 class DecompositionIndividual:
-    def __init__(self, tool_llm, chat_llm, embeddings, vector_storage_dir, top_k, rerank = None):
+    def __init__(self, tool_llm, chat_llm, embeddings, vector_storage_dir, top_k, rerank_model = None):
         self.tool_llm = tool_llm
         self.chat_llm = chat_llm
         self.vector_store = VectorStore(embeddings=embeddings, 
                                         storage_dir=vector_storage_dir,
                                         top_k=top_k)
         self.sub_problem_generator = SubProblemGenerator(llm = tool_llm, isSequence = False)
-        self.sub_problem_solver = SubProblemSolver(llm = tool_llm, rerank = rerank)
-        self.rerank_model = rerank
+        if(rerank_model is not None):
+            self.rerank_model = Rerank(model = rerank_model)
+        else:
+            self.rerank_model = None
+        self.sub_problem_solver = SubProblemSolver(llm = tool_llm, rerank = self.rerank_model)
+        self.input_filter = InputFilter(tool_llm = tool_llm)
         
         graph_builder = (StateGraph(State)
                          .add_node("generate_sub_problems", self.generate_sub_problems)
@@ -112,21 +116,29 @@ class DecompositionIndividual:
             print(history)
 
     def query(self, query: str, history: t.Optional[t.List] = None):
+        if(self.input_filter(query)):
+            return {
+                "response": "输入内容包含受限信息，请调整表述后重新提交。",
+                "retrieved_docs": ""
+            }
         if history is None:
             history = []
         state = State(origin_query=query, history=history)
-        return self.graph.invoke(state).get("response")
-
+        result = self.graph.invoke(state)
+        return {
+            "response": result.get("response"),
+            "retrieved_docs": yaml.safe_load(result.get("vector_results", "[]"))  # 解析 YAML
+        }
 
 if __name__ == "__main__":
     from llms import chat_llm, tool_llm
     from embeddings import embeddings
     from config import conf
-    from utils import rerank
+    from utils import rrk_model
     decomposition_individual = DecompositionIndividual(chat_llm=chat_llm,
                                                   tool_llm=tool_llm,
                                                   embeddings=embeddings,
                                                   vector_storage_dir=conf.storage_dir.vector,
-                                                  top_k=conf.top_k)
-                                                #   rerank=rerank)
+                                                  top_k=conf.top_k,
+                                                  rerank_model=rrk_model)
     decomposition_individual.command_chat()

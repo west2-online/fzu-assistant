@@ -59,14 +59,15 @@ class SubProblemGenerator:
         ])
     
     @staticmethod
-    def extract_question(text) -> dict:
-        pattern = r'(?i)```\s*question\s*(.*?)\s*```'
-        matches = re.findall(pattern, text, re.DOTALL)
-
-        if not matches:
-            return None
-        question = matches[-1].strip()
-        return question
+    def extract_question(text: str) -> str:
+        pattern = r'(?s)```question\s*(.*?)\s*```'
+        matches = re.findall(pattern, text)
+    
+        if matches:
+            return matches[-1].strip()
+        
+        # 如果正则匹配失败，返回原始文本
+        return text.strip()
 
 if __name__ == "__main__":
     from langchain_community.chat_models import ChatZhipuAI
