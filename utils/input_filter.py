@@ -4,7 +4,10 @@ from pathlib import Path
 from typing import List
 from langchain_core.output_parsers import StrOutputParser
 from langchain.prompts import ChatPromptTemplate
-
+import os
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
 
 class InputFilter:
     def __init__(self, tool_llm, 
