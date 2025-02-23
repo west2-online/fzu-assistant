@@ -1,4 +1,7 @@
 import os
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
 import json
 import time
 import random
@@ -8,20 +11,20 @@ from langchain_community.embeddings import ZhipuAIEmbeddings
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.testset import TestsetGenerator
+from _config import _conf
+from config import conf
 
 # 设置 API Key
-os.environ["ZHIPUAI_API_KEY"] = "7ec63d7bedf748ba8bfdc2715a3bb534.6sD9B4RFA1Jzjx9t"
+os.environ["ZHIPUAI_API_KEY"] = _conf.ZHIPU.ZHIPUAI_API_KEY
 
 # 初始化 ZhipuAI 模型
 def initialize_zhipuai_models():
-    zhipu_chat = ChatZhipuAI(model='glm-4-Air')
-    zhipu_embedding = ZhipuAIEmbeddings(model="embedding-3")
-    zhipu_llm = LangchainLLMWrapper(zhipu_chat)
-    zhipu_embeddings = LangchainEmbeddingsWrapper(zhipu_embedding)
-    return zhipu_llm, zhipu_embeddings
+    zhipu_chat = ChatZhipuAI(model=_conf.ZHIPU.Model_name)
+    zhipu_embedding = ZhipuAIEmbeddings(model=_conf.ZHIPU.embedding)
+    return LangchainLLMWrapper(zhipu_chat), LangchainEmbeddingsWrapper(zhipu_embedding)
 
 def generate_testset():
-    directories = ["./data/QA", "./data/notice"]
+    directories = [conf.data_dir.QA]
     all_docs = []
     
     for directory in directories:
@@ -40,19 +43,19 @@ def generate_testset():
                     all_docs.extend(docs)
     
     random.shuffle(all_docs)
-    all_docs = all_docs[:3]
+    all_docs = all_docs
     generator_llm, generator_embeddings = initialize_zhipuai_models()
     generator = TestsetGenerator(llm=generator_llm, embedding_model=generator_embeddings)
-    dataset = generator.generate_with_langchain_docs(all_docs, testset_size=10)
+    dataset = generator.generate_with_langchain_docs(all_docs, testset_size=_conf.testset_size)
     
     df = dataset.to_pandas()
-    testset_path = "./eval/eval_data/testset.json"
+    testset_path = _conf.Storage_dir.Testset_path +"/testset.json"
     df.to_json(testset_path, orient="records", force_ascii=False)
     print(f"测试集已保存为 {testset_path}")
     translate_testset(testset_path)
 
 def translate_testset(file_path):
-    llm = ChatZhipuAI(model='glm-4-Air')
+    llm = ChatZhipuAI(model=_conf.ZHIPU.Model_name)
     
     with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
