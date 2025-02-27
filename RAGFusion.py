@@ -5,7 +5,7 @@ import time
 from langgraph.graph import StateGraph, END
 from langgraph.types import StreamWriter
 
-from utils import QueryGenerator, reciprocal_rank_fusion
+from utils import QueryGenerator, Rerank, reciprocal_rank_fusion, InputFilter
 from vector_store import VectorStore
 
 
@@ -18,14 +18,19 @@ class State(t.TypedDict):
 
 
 class RAGFusion:
-    def __init__(self, tool_llm, chat_llm, embeddings, vector_storage_dir, top_k, rerank = None):
+    def __init__(self, tool_llm, chat_llm, embeddings, vector_storage_dir, top_k, rerank_model = None):
         self.tool_llm = tool_llm
         self.chat_llm = chat_llm
         self.vector_store = VectorStore(embeddings=embeddings, 
                                 storage_dir=vector_storage_dir,
                                 top_k=top_k)
         self.query_generator = QueryGenerator(llm=tool_llm)
-        self.rerank_model = rerank
+        if(rerank_model is not None):
+            self.rerank_model = Rerank(rerank_model)
+        else:
+            self.rerank_model = None
+        self.input_filter = InputFilter(tool_llm = tool_llm)
+
         graph_builder = (StateGraph(State).add_node("generate_similar_queries", self.generate_similar_queries)
         .add_node("retrieval", self.retrieval)
         .add_node("format_response", self.format_response)
@@ -104,24 +109,43 @@ class RAGFusion:
                 "role": "assistant",
                 "content": whole_answer
             })
-            print(history)
+            # print(history)
+
+    # def query(self, query: str, history: t.Optional[t.List] = None):
+    #     if history is None:
+    #         history = []
+    #     state = State(origin_query=query, history=history)
+    #     return self.graph.invoke(state).get("response")
 
     def query(self, query: str, history: t.Optional[t.List] = None):
+        if(self.input_filter(query)):
+            return {
+                "response": "输入内容包含受限信息，请调整表述后重新提交。",
+                "retrieved_docs": ""
+            }
         if history is None:
             history = []
         state = State(origin_query=query, history=history)
-        return self.graph.invoke(state).get("response")
+        result = self.graph.invoke(state)
+        return {
+            "response": result.get("response"),
+            "retrieved_docs": yaml.safe_load(result.get("vector_results", "[]"))  # 解析 YAML
+        }
+
             
 
 if __name__ == "__main__":
     from llms import chat_llm, tool_llm
     from embeddings import embeddings
     from config import conf
-    from utils import rerank
+    from utils import rrk_model
     rag_fusion = RAGFusion(chat_llm=chat_llm,
                            tool_llm=tool_llm,
                            embeddings=embeddings,
                            vector_storage_dir=conf.storage_dir.vector,
                            top_k=conf.top_k,
-                           rerank=rerank)
-    rag_fusion.command_chat()
+                           rerank_model=rrk_model)
+    # rag_fusion.command_chat()
+    # print(rag_fusion.query('福州大学新生报到应该注意什么?'))
+    while (question:=input("输入:"))!="exit":
+        print(rag_fusion.query(question))
