@@ -87,7 +87,7 @@ googleapis-common-protos==1.66.0
 graspologic==3.4.1
 graspologic-native==1.2.3
 greenlet==3.1.1
-# grpcio==1.67.1
+grpcio==1.67.1
 h11==0.14.0
 html5lib==1.1
 httpcore==1.0.7
@@ -136,7 +136,7 @@ langchain-text-splitters==0.3.6
 langchainhub==0.1.21
 langdetect==1.0.9
 langgraph==0.2.70
-langgraph-api==0.0.24
+# langgraph-api==0.0.24
 langgraph-checkpoint==2.0.12
 langgraph-cli==0.1.71
 langgraph-sdk==0.1.51
@@ -246,7 +246,7 @@ prometheus_client==0.21.1
 prompt_toolkit==3.0.50
 propcache==0.2.1
 proto-plus==1.26.0
-# protobuf==5.29.3
+protobuf==5.29.3
 psutil==6.1.1
 ptyprocess==0.7.0
 pure_eval==0.2.3
@@ -364,10 +364,9 @@ xgrammar==0.1.11
 XlsxWriter==3.2.2
 xxhash==3.5.0
 yarl==1.18.3
-zhipuai==2.1.5.20250106
+# zhipuai==2.1.5.20250106
 zipp==3.21.0
 zstandard==0.23.0
-grpcio==1.48.2
-grpcio-tools==1.48.2
-protobuf==3.20.3
-etcd3
+
+
+# 暂时注释掉了两个，一个是langgraph-api，一个是zhipuai，这两个后续都得删反正，不影响
