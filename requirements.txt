@@ -1,0 +1,18 @@
+zhipuai==2.1.5.20250106          # 智谱AI主SDK
+langchain-core==0.3.34           # LangChain核心组件
+langchain-community==0.3.17     # LangChain社区扩展
+langgraph==0.2.70                # 流程编排工具
+python-dotenv==1.0.1             # 环境变量管理
+httpx==0.28.1                    # HTTP客户端（zhipuai的底层依赖）
+anyio==4.8.0                     # 异步IO支持
+pydantic==2.10.6                 # 数据验证（LangChain依赖）
+pydantic_core==2.27.2
+typing_extensions==4.12.2        # 类型扩展
+faiss-cpu==1.10.0
+tqdm==4.67.1
+streamlit==1.43.2
+
+
+# langchain_huggingface 后续这里需要注意一下，因为我现在使用的是langchain
+# 然后注意一下得创建那个文件夹，得加进部署的时候，代码为：mkdir -p ./storage/vector
+

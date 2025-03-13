@@ -1,9 +1,0 @@
-{
-    "chat model": "command-r-plus",
-    "chroma_db" :{
-        "save file" : "",
-        "embedding model": "embed-multilingual-light-v3.0"
-    },
-    "top_k": 3,
-    "COHERE API KEY": ""
-}

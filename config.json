@@ -1,0 +1,25 @@
+{
+    "chat_llm": "./models/Qwen2.5-7B-Instruct-1M",
+    "tool_llm": "./models/Qwen2.5-7B-Instruct-1M",
+    "embedding_model": "./models/Conan-embedding-v1",
+    "neo4j": {
+      "url": "bolt://localhost:7687",
+      "username": "neo4j",
+      "password": "neo4j",
+      "database": "neo4j"
+    },
+    "data_dir": {
+        "notice": "./data/notice",
+        "QA": "./data/QA",
+        "whole": "./data"
+    },
+    "storage_dir": {
+        "vector": "./storage/vector",
+        "graph": "./storage/graph"
+    },
+    "top_k": 20,
+    "lightrag_query_mode": "mix",
+    "zhipu": {
+      "api_key": "e1c78996c76a475583c1132cdb77b92c.PWSXBiLy8gBkTWPm"
+    }
+}
