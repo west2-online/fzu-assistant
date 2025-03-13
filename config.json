@@ -20,6 +20,6 @@
     "top_k": 20,
     "lightrag_query_mode": "mix",
     "zhipu": {
-      "api_key": "e1c78996c76a475583c1132cdb77b92c.PWSXBiLy8gBkTWPm"
+      "api_key": "your_api_key"
     }
 }
