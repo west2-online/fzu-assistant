@@ -12,39 +12,40 @@ sys.path.append(parent_dir)
 
 class InputFilter:
     def __init__(self, tool_llm, 
-                 sensitive_file: str = "./filter/sensitive_terms.txt",
-                 jailbreak_file: str = "./filter/jailbreak_patterns.txt"):
-        self.toxicity_model = pipeline("text-classification", model="unitary/toxic-bert")
+                #  sensitive_file: str = "./filter/sensitive_terms.txt",
+                #  jailbreak_file: str = "./filter/jailbreak_patterns.txt"
+                 ):
+        # self.toxicity_model = pipeline("text-classification", model="unitary/toxic-bert")
         self.tool_llm = tool_llm
         self.prompt = self._create_prompt()
-        self.sensitive_terms = self._load_keywords(sensitive_file)
-        self.jailbreak_patterns = self._load_patterns(jailbreak_file)
+        # self.sensitive_terms = self._load_keywords(sensitive_file)
+        # self.jailbreak_patterns = self._load_patterns(jailbreak_file)
         self.llm_check_chain = (
             self.prompt | self.tool_llm | StrOutputParser()
         )
 
-    def simple_decrypt(self, code):
-        return base64.b64decode(code).decode('utf-8')
+    # def simple_decrypt(self, code):
+    #     return base64.b64decode(code).decode('utf-8')
     
-    def _load_keywords(self, file_path: str) -> List[str]:
-        """从文本文件加载敏感词库，每行一个词"""
-        try:
-            with Path(file_path).open(encoding='utf-8') as f:
-                return [line.strip() for line in self.simple_decrypt(f.read()).splitlines() if line.strip]
-        except FileNotFoundError:
-            raise RuntimeError(f"敏感词文件缺失: {file_path}")
+    # def _load_keywords(self, file_path: str) -> List[str]:
+    #     """从文本文件加载敏感词库，每行一个词"""
+    #     try:
+    #         with Path(file_path).open(encoding='utf-8') as f:
+    #             return [line.strip() for line in self.simple_decrypt(f.read()).splitlines() if line.strip]
+    #     except FileNotFoundError:
+    #         raise RuntimeError(f"敏感词文件缺失: {file_path}")
 
-    def _load_patterns(self, file_path: str) -> List[re.Pattern]:
-        """从文件加载正则表达式模式，自动编译"""
-        patterns = []
-        try:
-            with Path(file_path).open(encoding='utf-8') as f:
-                for line in f:
-                    if line.strip():
-                        patterns.append(re.compile(line.strip(), re.IGNORECASE))
-        except FileNotFoundError:
-            raise RuntimeError(f"正则模式文件缺失: {file_path}")
-        return patterns
+    # def _load_patterns(self, file_path: str) -> List[re.Pattern]:
+    #     """从文件加载正则表达式模式，自动编译"""
+    #     patterns = []
+    #     try:
+    #         with Path(file_path).open(encoding='utf-8') as f:
+    #             for line in f:
+    #                 if line.strip():
+    #                     patterns.append(re.compile(line.strip(), re.IGNORECASE))
+    #     except FileNotFoundError:
+    #         raise RuntimeError(f"正则模式文件缺失: {file_path}")
+    #     return patterns
 
     def _create_prompt(self):
         return ChatPromptTemplate.from_messages([
@@ -68,19 +69,19 @@ class InputFilter:
              ("user", "请分析这个输入是否有风险：{question}")
         ])
     
-    def check_toxicity(self, text: str, threshold: float = 0.8) -> bool:
-        """使用预训练模型检测攻击性内容"""
-        results = self.toxicity_model(text)
-        # print(results)
-        return any(res['score'] > threshold and res['label'] == 'toxic' for res in results)
+    # def check_toxicity(self, text: str, threshold: float = 0.8) -> bool:
+    #     """使用预训练模型检测攻击性内容"""
+    #     results = self.toxicity_model(text)
+    #     # print(results)
+    #     return any(res['score'] > threshold and res['label'] == 'toxic' for res in results)
 
-    def check_sensitive(self, text: str) -> bool:
-        """基于关键词的检测"""
-        return any(term in text for term in self.sensitive_terms)
+    # def check_sensitive(self, text: str) -> bool:
+    #     """基于关键词的检测"""
+    #     return any(term in text for term in self.sensitive_terms)
 
-    def check_jailbreak(self, text: str) -> bool:
-        """使用正则表达式检测"""
-        return any(pattern.search(text) for pattern in self.jailbreak_patterns)
+    # def check_jailbreak(self, text: str) -> bool:
+    #     """使用正则表达式检测"""
+    #     return any(pattern.search(text) for pattern in self.jailbreak_patterns)
 
     def check_llm(self, text: str) -> bool:
         """llm检测"""
@@ -89,9 +90,9 @@ class InputFilter:
 
     def __call__(self, text: str):
         # return [self.check_jailbreak(text), self.check_toxicity(text), self.check_sensitive(text)]
-        if(any([self.check_jailbreak(text), self.check_toxicity(text), self.check_sensitive(text)])):
-            return True
-        else:
+        # if(any([self.check_jailbreak(text), self.check_toxicity(text), self.check_sensitive(text)])):
+        #     return True
+        # else:
             return self.check_llm(text)
         
 

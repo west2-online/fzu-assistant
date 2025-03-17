@@ -41,6 +41,7 @@ class OutputChecker(Validator):
             return PassResult(value_override = "(以下内容与福州大学无关，无法保证其正确性，请谨慎甄别)" + value)
         return PassResult()
 
+@register_validator(name="hallucination check", data_type = "string")
 class HallucinationsChecker(Validator):
     def __init__(self, tool_llm, on_fail = None, **kwargs):
         super().__init__(on_fail, **kwargs)
@@ -75,23 +76,27 @@ class GuardrailsRAG:
 
     def RAG(
         self,
-        query,
-        history,
         **kwargs
     ) -> str:
         
         """Custom LLM API wrapper"""
+        
+        message = kwargs.pop(message, [])
+        query = message[-1]['content']
+        history = message[:-1]
 
         result = self.naive_rag.query(query, history)
         self.last_vector_res = result.get("vector_results")
 
         return result.get("response")
 
-    def on_call(self, query:str, history):
+    def query(self, query:str, history) -> str:
+        if(history is None):
+            history = []
+        history.append({"roles": "user", "content": query})
         result = self.input_guard(
             self.RAG,
-            query = query,
-            history = history,
+            messages = history
         )
         if len(self.last_vector_res) > 10:
             result = self.output_guard.parse(
