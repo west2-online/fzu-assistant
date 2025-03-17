@@ -96,7 +96,7 @@ class NaiveRAG:
         if history is None:
             history = []
         state = State(origin_query=query, history=history)
-        return self.graph.invoke(state).get("response")
+        return self.graph.invoke(state)
     
     def stream(self, question, history):
         state = State(origin_query=question, history=history)
