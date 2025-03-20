@@ -3,6 +3,7 @@ from langchain_core.documents import Document
 import typing as t
 
 def reciprocal_rank_fusion(results: t.List[t.List[Document]], k=60):
+    n = 20
     fused_scores = {}
     for docs in results:
         for rank, doc in enumerate(docs):
@@ -14,7 +15,7 @@ def reciprocal_rank_fusion(results: t.List[t.List[Document]], k=60):
     reranked_results = [
         (loads(doc_str), score) for doc_str, score in sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
     ]
-    return [x[0] for x in reranked_results[:10]]
+    return [x[0] for x in reranked_results[:20]]
 
 
 if __name__ == "__main__":

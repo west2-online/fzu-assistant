@@ -14,7 +14,7 @@ class VectorStore:
         self.storage_dir = storage_dir
         dim = len(embeddings.embed_query("hello world"))
         index = faiss.IndexFlatL2(dim)  # cpu index
-        if len(os.listdir(storage_dir)) == 0:
+        if "index.faiss" not in os.listdir(storage_dir):
             self.vector_store = FAISS(
                 embedding_function=embeddings,
                 index=index,
@@ -34,7 +34,8 @@ class VectorStore:
 
     def query(self, question: str) -> t.List[Document]:
         return self.vector_store.similarity_search(question, k=self.top_k)
-    
+        # return self.vector_store.similarity_search_with_score(question, k=self.top_k)
+        
     def save(self, storage_dir=None):
         if storage_dir is None:
             storage_dir = self.storage_dir
@@ -44,9 +45,10 @@ class VectorStore:
         while (inp:=input("检索：")) != "exit":
             res = self.query(inp)
             for r in res:
-                print(r.page_content)
+                # print(r.page_content)
+                print(r)
 
-    def train(self, documents: t.List[Document], batch=1000):
+    def train(self, documents: t.List[Document], batch=100):
         for i in trange(0, len(documents), batch):
             chunk_documents = documents[i:i+batch]
             self.add_documents(documents=chunk_documents)
@@ -57,8 +59,9 @@ if __name__ == "__main__":
     from utils import DataLoader
     from embeddings import embeddings
     from config import conf
-    vector_store = VectorStore(embeddings=embeddings, storage_dir=conf.storage_dir.vector)
     loader = DataLoader(data_dir=conf.data_dir.whole)
     documents = loader.load_and_split()
+    vector_store = VectorStore(embeddings=embeddings, storage_dir=conf.storage_dir.vector)
     vector_store.train(documents=documents)
-    print(vector_store.query("福州大学的校训是什么？"))
+    print(vector_store.query("福州大学创建多少年了？"))
+    vector_store.command_search()
