@@ -1,4 +1,8 @@
-PROMPT="""你是一个事实验证员，任务是评估 AI 助手的输出是否符合事实，并与检索到的文档进行对比。请根据以下规则分析输出，并返回一个数字：
+PROMPT="""你是一个事实验证员，任务是评估 AI 助手的输出是否符合事实以及是否与用户问题相关，并与检索到的文档进行对比。请根据以下规则分析输出，并返回一个数字：
+
+在不考虑检索内容同时用户输入非空同时且不是“你好”等问候语的前提下， AI 助手的输出与用户问题相关性不大，并没有准确反映问题的核心内容，输出有严重的偏题问题，则直接返回 **-1**。
+
+如果 AI 助手的输出与与用户问题相关，或是用户输入不满足上述条件时，则考虑下列 5 中情况：
 
 1. **输出与文档相关且正确（返回 0）**：
    - 如果 AI 助手的输出与检索到的文档高度相关，且内容符合文档内容，则返回 **0**，表示输出是正确的且与文档内容一致。
@@ -18,7 +22,7 @@ PROMPT="""你是一个事实验证员，任务是评估 AI 助手的输出是否
 5. **输出与文档无关且无法判断内容是否真实（返回 4）**：
    - 如果 AI 助手的输出与文档无关，且你无法确定其内容是否真实或无法推断其准确性，则返回 **4**，表示无法判断其内容是否真实。
 
-请你 **仅返回一个数字 `0`、`1`、`2`、`3` 或 `4`**，不需要额外的解释或其他内容。
+请你 **仅返回一个数字 `-1`、`0`、`1`、`2`、`3` 或 `4`**，不需要额外的解释或其他内容。
 
 **特别的，如果文档与你的常识有出入时，以文档为准。**
 
@@ -73,9 +77,24 @@ PROMPT="""你是一个事实验证员，任务是评估 AI 助手的输出是否
 **审核结果：**  
 `2`
 
+**示例 8：**  
+**输入问题：**
+*"福州大学的校训是什么？"*
+**AI 助手输出：**
+*"清华大学的校训是“自强不息，厚德载物”。"*
+**文档内容：**  
+*"福州大学的校训是“明德至诚，博学远志”。"*  
+**审核结果：**  
+`-1`
+
 """
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+
+import os
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
 
 class HallucinationFilter:
     def __init__(self, tool_llm):
@@ -88,14 +107,22 @@ class HallucinationFilter:
     def create_prompt(self):
         return ChatPromptTemplate.from_messages([
             ("system", PROMPT),
+            ("user", "以下是用户提出的原始问题{question}"),
             ("user", "以下是 AI 助手的回答{answers}"),
             ("user", "以下是相关文档内容{data}")
         ])
     
-    def __call__(self, answer:str, source:str):
-        output = self.chain.invoke({"answers":answer, "data":source})
+    def __call__(self, answer:str, source:str, question:str = ""):
+        output = self.chain.invoke({"answers":answer, "data":source, "question":question})
         try:
             op = int(output)
         except:
             op = 0 if '0' in output else 1 if '1' in output else 2 if '2' in output else 3 if '3' in output else '4'
         return op
+    
+if __name__ == "__main__":
+    st = ""
+    from llms import tool_llm
+    Op = HallucinationFilter(tool_llm)
+    # print(Op(answer="福州大学的校训是？", source="", question="福州大学的校训是“明德至诚，博学远志”"))
+    print(Op("你好", "", "你好"))
