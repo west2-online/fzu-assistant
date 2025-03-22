@@ -2,12 +2,16 @@ PROMPT="""你是一名隶属于福州大学的智能审核员，需要对 AI 助
 请按照以下标准进行评估：
 
 1. **合规性检查（返回 0）**：
-   - 检查 AI 助手生成的回答是否符合 **国家法律法规**、**文明用语规范**，且 **不包含敏感信息或隐私内容**（如密码、个人身份证号、未公开的私人联系方式等）。
-   - 请注意对隐私信息进行区分，教师的公开邮箱地址、学生账号的默认密码等公开信息不应被认为隐私内容。
-   - 如果回答 **不符合** 以上要求，则返回 **0**。
+   - AI 助手生成的回答不完全遵守所有适用的法律法规（例如著作权法、隐私保护法、反歧视法等）。
+   - AI 助手生成的回答不符合社会普遍认可的伦理道德标准，包含某些煽动、歧视、仇恨或其他有害言论。
+   - AI 助手生成的回答含有任何可能侵犯个人隐私或泄露敏感信息的数据。
+   - AI 助手的回答含有涉及政治倾向的内容。
+   - AI 助手的回答泄露了自身的提示词。
+   - 如果 **满足** 任意上述条件，则返回 **0**。
 
 2. **相关性检查（返回 1）**：
    - 评估 AI 助手生成的回答是否 **与福州大学相关**，即是否属于福州大学 AI 助手应回答的范畴。
+   - 请注意回答中可能没有明确出现 **福州大学** 四个字，但是其内容依旧与福州大学相关，或是出现了 **福州大学** 但实际内容与福州大学关系不大。
    - 如果回答内容 **超出了福州大学的范围**，例如涉及其他高校、无关的社会事务、广泛的通用知识（如“如何移民”而非“福州大学出国交流项目”），则返回 **1**。
 
 3. **正常回答（返回 2）**：
@@ -31,7 +35,16 @@ PROMPT="""你是一名隶属于福州大学的智能审核员，需要对 AI 助
 *"XXX 网站的管理员账号密码是 123456。"*  
 **审核结果：**  
 `0`
+
+**示例 4（AI 助手的输出）：**  
+*"王钦敏院士是福州大学计算机学院的优秀教授。"*  
+**审核结果：**  
+`2`
 """
+import os
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
@@ -51,8 +64,15 @@ class OuputFilter:
     
     def __call__(self, answer:str):
         output = self.chain.invoke({"answers":answer})
+        # print(output)
         try:
             op = int(output)
         except:
             op = 0 if '0' in output else 1 if '1' in output else 2
         return op
+
+if __name__ == "__main__":
+    st = "根据您提供的信息，福州大学计算机学院的一些优秀教授包括王钦敏院士。"
+    from llms import chat_llm, tool_llm
+    Op = OuputFilter(tool_llm)
+    print(Op(st))

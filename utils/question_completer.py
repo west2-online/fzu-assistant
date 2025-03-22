@@ -12,7 +12,7 @@ class QuestionCompleter:
     def create_prompt():
         prompt = """
         用户的问题存在模糊的部分。
-        你试图从信息完整性，语义歧义性，上下文依赖度，领域特异性来进行分析，猜测用户问题缺少的成分，尝试给出5个用户可能希望问的问题。
+        你试图从信息完整性，语义歧义性，上下文依赖度，领域特异性来进行分析，猜测用户问题缺少的成分，尝试给出3个用户可能希望问的问题。
         输出格式严格按照一下规范，只要输出预测的问题即可。
 
         输出示例：
@@ -28,20 +28,21 @@ class QuestionCompleter:
         return PromptTemplate.from_template(prompt)
 
     @staticmethod
-    def extract_answer(text) -> dict:
+    def extract_answer(text) -> list:
         pattern = r'(?i)```\s*answer\s*(.*?)\s*```'
         matches = re.findall(pattern, text, re.DOTALL)
 
         if not matches:
-            return None
+            return []
         answer = matches[-1].strip()
-        return answer
+        return answer.split("\n")
 
-    def __call__(self, question):
+    def __call__(self, question) -> list:
         prompt = self.prompt.format(question=question)
         result = self.llm.invoke(prompt)
         result = self.extract_answer(result.content)
-        result = f"""同学您的问题可能有一些模糊，可以尝试补全一些信息，或者尝试问问:
-        {result}
-        """
+        # result = f"""同学您的问题可能有一些模糊，可以尝试补全一些信息，或者尝试问问:
+        # {result}
+        # """
+        # print(result)
         return result
