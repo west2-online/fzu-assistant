@@ -4,7 +4,7 @@
 FZU-AI-ANSWER is an intelligent assistant application based on RAG technology, designed to provide notification aggregation, daily life assistance, and Q&A dialogue functionalities.
 
 <div align="center">
-  <a href="#overview">English</a> | <a href="docs/README.zh.md">中文</a>
+  <a href="#overview">English</a> | <a href="README.zh.md">中文</a>
 </div>
 
 # Running the Application
