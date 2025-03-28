@@ -1,4 +1,4 @@
-![rag](img\Pipeline.png)
+![rag](img/pipeline.png)
 
 # Overview
 FZU-AI-ANSWER is an intelligent assistant application based on RAG technology, designed to provide notification aggregation, daily life assistance, and Q&A dialogue functionalities.
