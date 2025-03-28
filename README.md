@@ -1,4 +1,4 @@
-![rag](img\Pipeline.svg)
+![rag](img\Pipeline.png)
 
 # Overview
 FZU-AI-ANSWER is an intelligent assistant application based on RAG technology, designed to provide notification aggregation, daily life assistance, and Q&A dialogue functionalities.
@@ -29,7 +29,7 @@ streamlit run web_page_reasoning.py
 - Method: [RAGAS](https://docs.ragas.io/)
 - Dataset: [MultiHop-RAG](https://huggingface.co/datasets/yixuantt/MultiHopRAG)
 
-![evaluate](img\evaluate.svg)
+![evaluate](img/evaluate.png)
 
 ## Tools
 
