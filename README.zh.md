@@ -1,4 +1,4 @@
-![rag](img\Pipeline.svg)
+![rag](img\Pipeline.png)
 
 # 概述
 FZU-AI-ANSWER 是一个基于RAG技术开发的智能助手应用，旨在提供通知汇总、日常生活助理、问答对话等功能。
@@ -29,7 +29,7 @@ streamlit run web_page_reasoning.py
 - 方法：[RAGAS](https://docs.ragas.io/)
 - 数据集：[MultiHop-RAG](https://huggingface.co/datasets/yixuantt/MultiHopRAG)
 
-![evaluate](img\evaluate.svg)
+![evaluate](img\evaluate.png)
 
 ## 工具
 
